@@ -120,8 +120,6 @@ func checkRangeRequestSupport(url string) (string, bool, error) {
 		return "", false, err
 	}
 
-	fmt.Println(resp.StatusCode)
-
 	if resp.StatusCode != 200 && resp.StatusCode != 206 {
 		req.Header.Set("Range", "")
 		req.Method = "GET"
