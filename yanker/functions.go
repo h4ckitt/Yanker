@@ -65,7 +65,7 @@ func writeFinalFile(filename, tempfilename string, ccn int) error {
 		reader := bufio.NewReader(tempFile)
 
 		for {
-			_, err = reader.Read(buffer)
+			numRead, err := reader.Read(buffer)
 
 			if err != nil {
 				if err == io.EOF {
@@ -73,7 +73,7 @@ func writeFinalFile(filename, tempfilename string, ccn int) error {
 				}
 			}
 
-			_, err = writer.Write(buffer)
+			_, err = writer.Write(buffer[:numRead])
 
 			if err != nil {
 				return err
@@ -178,25 +178,26 @@ func download(prefix, index, bRange, url string) {
 }
 
 func splitFileIntoChunks(size, chunks int) []string {
-	/*fileSize, _ := strconv.Atoi(size)
-	numChunks, _ := strconv.Atoi(chunks)*/
-
-	if size <= 0 {
-		return nil
+	if chunks <= 0 || size <= 0 {
+		return nil // Handle invalid inputs
 	}
 
-	chunkSize := size / chunks
+	baseSize := size / chunks        // Base number of bytes each worker handles
+	remainder := size % chunks       // Remaining bytes after even distribution
+	ranges := make([]string, chunks)     // Slice to hold the range strings
 
-	result := make([]string, chunks)
+	start := 0
+	for i := 0; i < chunks; i++ {
+		end := start + baseSize - 1 // Calculate the end byte for this worker
+		if i < remainder {          // Distribute remaining bytes among the first few workers
+			end++
+		}
 
-	for i, index := 0, 0; index <= chunks-1; i, index = i+chunkSize, index+1 {
-		result[index] = fmt.Sprintf("%d-%d", i, (i+chunkSize)-1)
+		ranges[i] = fmt.Sprintf("%d-%d", start, end)
+		start = end + 1            // Next range starts right after the current end
 	}
 
-	last := chunks - 1
-	result[last] = fmt.Sprintf("%d-%d", last*chunkSize, ((last*chunkSize)+chunkSize)-1)
-
-	return result
+	return ranges
 }
 
 func generateFileName() (string, error) {
